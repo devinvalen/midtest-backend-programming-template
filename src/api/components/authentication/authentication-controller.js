@@ -1,6 +1,6 @@
 const { errorResponder, errorTypes } = require('../../../core/errors');
 const authenticationServices = require('./authentication-service');
-
+let percobaan = 5;
 /**
  * Handle login request
  * @param {object} request - Express request object
@@ -9,7 +9,9 @@ const authenticationServices = require('./authentication-service');
  * @returns {object} Response object or pass an error to the next route
  */
 async function login(request, response, next) {
-  const { email, password } = request.body;
+  const emailSebelum = request.body.email;
+  const email = emailSebelum.toLowerCase();
+  const password = request.body.password;
 
   try {
     // Check login credentials
@@ -18,12 +20,30 @@ async function login(request, response, next) {
       password
     );
 
+    try {
+      const loginAttemptLimitResult =
+        await authenticationServices.checkLoginAttempt();
+
+      if (loginAttemptLimitResult) {
+        throw errorResponder(
+          errorTypes.FORBIDDEN,
+          `Terlalu banyak kegagalan dalam login. Tunggulah ${loginAttemptLimitResult.waktuWunggu} menit, untuk mencoba lagi.`
+        );
+      }
+    } catch (error) {
+      // Tangani kesalahan di sini
+      console.error(error);
+    }
+
     if (!loginSuccess) {
+      percobaan--;
       throw errorResponder(
         errorTypes.INVALID_CREDENTIALS,
-        'Wrong email or password'
+        `Email atau Password salah, anda memiliki ${percobaan} kali lagi untuk mencoba`
       );
     }
+
+    percobaan = 5;
 
     return response.status(200).json(loginSuccess);
   } catch (error) {
