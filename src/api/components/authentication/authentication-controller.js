@@ -27,7 +27,7 @@ async function login(request, response, next) {
       if (loginAttemptLimitResult) {
         throw errorResponder(
           errorTypes.FORBIDDEN,
-          `Terlalu banyak kegagalan dalam login. Tunggulah ${loginAttemptLimitResult.waktuWunggu} menit, untuk mencoba lagi.`
+          `Terlalu banyak kegagalan dalam login. Tunggulah ${loginAttemptLimitResult.waktuTunggu} menit, untuk mencoba lagi.`
         );
       }
     } catch (error) {
@@ -36,14 +36,14 @@ async function login(request, response, next) {
     }
 
     if (!loginSuccess) {
-      percobaan--;
+      percobaan--; //percobaan login dikurangi jika gagal
       throw errorResponder(
         errorTypes.INVALID_CREDENTIALS,
         `Email atau Password salah, anda memiliki ${percobaan} kali lagi untuk mencoba`
       );
     }
 
-    percobaan = 5;
+    percobaan = 5; //mengembalikan jumlah percobaan login
 
     return response.status(200).json(loginSuccess);
   } catch (error) {

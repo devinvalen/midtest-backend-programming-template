@@ -1,7 +1,9 @@
 const authenticationRepository = require('./authentication-repository');
 const { generateToken } = require('../../../utils/session-token');
 const { passwordMatched } = require('../../../utils/password');
-
+const batasPercobaan = 5; 
+const waktuMenungguPercobaan = 30;
+let menambahWaktu = true;
 /**
  * Check username and password for login.
  * @param {string} email - Email
@@ -33,6 +35,43 @@ async function checkLoginCredentials(email, password) {
   return null;
 }
 
+async function checkPercobaanLogin() {
+  const waktuSekarang = Date.now(); // 
+  const percobaanSebelum =
+    (await authenticationRepository.getPercobaanLogin()) || {
+      percobaan: 1,
+      tanggalPercobaan: 0,
+    };
+  
+
+  const batasWaktu = await authenticationRepository.searchWaktuLogin(); 
+  const waktuLewat = (waktuSekarang - batasWaktu) / (60 * 1000);
+  const waktuTunggu = (waktuTungguPercobaan - waktuLewat).toFixed(2);
+  if (waktuLewat < waktuTungguPercobaan) {
+    return { success: true, waktuTunggu: waktuTunggu };
+  }
+  if (waktuLewat > waktuTungguPercobaan) {
+    menambahWaktu = true;
+    await authenticationRepository.clearWaktuLogin(); 
+    authenticationRepository.resetPercobaanLogin(); 
+  }
+
+  if (percobaanSebelum.percobaan > batasPercobaan) {
+    if (menambahWaktu === true) {
+      await authenticationRepository.addLoginTime(percobaanSebelum.tanggalPercobaan);
+      menambahWaktu = false;
+    }
+    return { success: true, waktuTunggu: '30 menit' };
+  }
+  
+  await authenticationRepository.savePercobaanLogin(
+    percobaanSebelum.percobaan + 1,
+    waktuSekarang
+  );
+}
+
+
 module.exports = {
   checkLoginCredentials,
+  checkPercobaanLogin,
 };

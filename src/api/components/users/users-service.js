@@ -40,6 +40,48 @@ async function getUser(id) {
     email: user.email,
   };
 }
+/**
+ * Get paginated list of users.
+ * @param {string} nomorPage - The page number to display.
+ * @param {string} besarPage - The number of data displayed per page.
+ * @param {string} search - The search filter to find desired data.
+ * @param {string} sortQuery - The sort filter for data sorting.
+ * @returns {Object} An object containing paginated user data.
+ */
+async function getPaginationUsers(nomorPage, besarPage, search, sortQuery) {
+  const users = await usersRepository.getPaginationUsers(
+    nomorPage,
+    besarPage,
+    search,
+    sortQuery
+  );
+
+  const indexMulamula = (nomorPage - 1) * besarPage;
+  const indexAkhirakhir = nomorPage * besarPage;
+  const pageSebelum = nomorPage > 1;
+  const pageSetelah = indexAkhirakhir < users.length;
+  const results = users.slice(indexMulamula, indexAkhirakhir);
+  const count = results.length;
+
+  const resultUsers = [];
+  for (let i = 0; i < count; i += 1) {
+    const user = results[i];
+    resultUsers.push({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    });
+  }
+
+  return {
+    nomorPage,
+    besarPage,
+    count,
+    pageSebelum,
+    pageSetelah,
+    data: resultUsers,
+  };
+}
 
 /**
  * Create new user
@@ -164,6 +206,7 @@ async function changePassword(userId, password) {
 module.exports = {
   getUsers,
   getUser,
+  getPaginationUsers,
   createUser,
   updateUser,
   deleteUser,
