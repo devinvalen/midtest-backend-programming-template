@@ -9,46 +9,63 @@ let percobaan = 5;
  * @returns {object} Response object or pass an error to the next route
  */
 async function login(request, response, next) {
-  const emailSebelum = request.body.email;
-  const email = emailSebelum.toLowerCase();
-  const password = request.body.password;
-
   try {
-    // Check login credentials
+    const { email, password } = getEmailAndPassword(request);
+
     const loginSuccess = await authenticationServices.checkLoginCredentials(
       email,
       password
     );
 
-    try {
-      const loginAttemptLimitResult =
-        await authenticationServices.checkLoginAttempt();
-
-      if (loginAttemptLimitResult) {
-        throw errorResponder(
-          errorTypes.FORBIDDEN,
-          `Terlalu banyak kegagalan dalam login. Tunggulah ${loginAttemptLimitResult.waktuTunggu} menit, untuk mencoba lagi.`
-        );
-      }
-    } catch (error) {
-      // Tangani kesalahan di sini
-      console.error(error);
-    }
+    await handleLoginAttempt(loginSuccess);
 
     if (!loginSuccess) {
-      percobaan--; //percobaan login dikurangi jika gagal
+      decrementPercobaan();
       throw errorResponder(
         errorTypes.INVALID_CREDENTIALS,
         `Email atau Password salah, anda memiliki ${percobaan} kali lagi untuk mencoba`
       );
     }
 
-    percobaan = 5; //mengembalikan jumlah percobaan login
+    resetPercobaan();
 
     return response.status(200).json(loginSuccess);
   } catch (error) {
     return next(error);
   }
+}
+
+function getEmailAndPassword(request) {
+  const emailSebelum = request.body.email;
+  const email = emailSebelum.toLowerCase();
+  const password = request.body.password;
+  return { email, password };
+}
+
+async function handleLoginAttempt(loginSuccess) {
+  if (loginSuccess) {
+    return;
+  }
+  try {
+    const loginAttemptLimitResult =
+      await authenticationServices.checkLoginAttempt();
+    if (loginAttemptLimitResult) {
+      throw errorResponder(
+        errorTypes.FORBIDDEN,
+        `Terlalu banyak kegagalan dalam login. Tunggulah ${loginAttemptLimitResult.waktuTunggu} menit, untuk mencoba lagi.`
+      );
+    }
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+function decrementPercobaan() {
+  percobaan--;
+}
+
+function resetPercobaan() {
+  percobaan = 5;
 }
 
 module.exports = {
